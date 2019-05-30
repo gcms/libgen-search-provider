@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<schemalist gettext-domain="libgen-search-provider@gustavocms.gmail.com">
+    <enum id="libgen-search-provider.dictionary">
+        <value value="0" nick="Català"/>
+        <value value="1" nick="English"/>
+        <value value="2" nick="Español"/>
+        <value value="3" nick="Italiano"/>
+    </enum>
+    <enum id="libgen-search-provider.synonyms">
+        <value value="0" nick="English"/>
+        <value value="1" nick="Español"/>
+    </enum>
+
+    <schema path="/libgen-search-provider/" id="libgen-search-provider">
+        <key name="dictionary" enum="libgen-search-provider.dictionary">
+            <default>'English'</default>
+            <summary>Dictionary</summary>
+        </key>
+        <key name="synonyms" enum="libgen-search-provider.synonyms">
+            <default>'English'</default>
+            <summary>Synonyms</summary>
+        </key>
+    </schema>
+</schemalist>

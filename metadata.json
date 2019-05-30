@@ -1,0 +1,8 @@
+{
+  "name": "Libgen Search Provider",
+  "description": "A simple search for libgen resources",
+  "uuid": "libgen-search-provider@gustavocms.gmail.com",
+  "shell-version": ["3.30.1"],
+  "gettext-domain": "libgen-search-provider@gustavocms.gmail.com",
+  "settings-schema": "libgen-search-provider"
+}
