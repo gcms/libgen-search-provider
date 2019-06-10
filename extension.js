@@ -177,7 +177,7 @@ class GenericSearchProvider {
         GLib.source_remove(this._timeoutId);
         this._timeoutId = 0;
       }
-      this._timeoutId = GLib.timeout_add(GLib.PRIORITY_DEFAULT, 5000, () => {
+      this._timeoutId = GLib.timeout_add(GLib.PRIORITY_DEFAULT, 800, () => {
         // now search
         this._api.get(
           terms,
@@ -289,7 +289,6 @@ class GenericSearchProvider {
   }
 
 
-
   /**
    * Return subset of results
    * @param {Array} results
@@ -298,8 +297,8 @@ class GenericSearchProvider {
    */
   filterResults(results, max) {
     // override max for now
-    max = this._api.limit; //TODO: _api.limit is probably never defined! (at least WordReferenceClient never sets it)
-    return results.slice(0, max);
+    // max = this._api.limit; //TODO: _api.limit is probably never defined! (at least WordReferenceClient never sets it)
+    return results;//.slice(0, max);
   }
 
 

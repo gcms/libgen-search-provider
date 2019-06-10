@@ -108,3 +108,82 @@ function syncFetchJSON(url) {
   let data = syncFetchData(url);
   return data ? JSON.parse(data) : null;
 }
+
+function toJson(obj) {
+  if (obj == null)
+    return 'null';
+
+  if (typeof obj == 'string')
+    return '"' + obj + '"';
+
+  if (Array.isArray(obj))
+    return '[' + obj.map(toJson).join(', ') + ']';
+
+  if (typeof obj != 'object')
+    return toJson(obj.toString());
+
+  return '{' + Object.keys(obj).map(k => toJson(k) + ': ' + toJson(obj[k])).join(', ') + '}';
+}
+
+function parseResult(input) {
+  let booksRegex = /<a href=.(book\/index[^'" ]+)[^>]+>([^<]+)/;
+  if (!input.match(booksRegex))
+    return null;
+
+  let regexTD = /<td[^>]*>(.*)<\/td>/;
+  let tds = input.split('<td').map(it => '<td' + it)
+    .map(it => it.match(regexTD))
+    .filter(it => it)
+    .map(it => it[1]);
+
+  let idRegex = /\s*(\d+)\s*/;
+  let id = tds[0].match(idRegex)[1];
+
+  let bookMatch = tds[2].match(booksRegex);
+  let url = bookMatch[1];
+  let title = bookMatch[2].replace(/\s+/g, ' ');
+
+  let result = {
+    id: id,
+    title: title,
+    url: url
+  };
+
+  let authorRegex = /req=([^&]*)&column/;
+  let authors = null;
+  let authorsString = null;
+
+  if (tds[1]) {
+    authors = tds[1].match(RegExp(authorRegex, 'g')).map(it => it.match(authorRegex)[1].trim());
+
+    if (authors.length > 0)
+      authorsString = authors[0];
+    if (authors.length == 2)
+      authorsString += ' & ' + authors[1];
+    else if (authors.length > 2)
+      authorsString += ' et al.'
+
+    if (authors && authors.length > 0) {
+      result.authors = authors;
+      result.author = authorsString;
+    }
+  }
+
+  let year = tds[4].match(/\d+/);
+  if (year && parseInt(year) > 1)
+    result.year = year;
+
+  let pages = tds[5].match(/\d+/);
+  if (pages)
+    result.pages = pages;
+
+  return result;
+}
+
+
+function parseResultsHTML(input) {
+  return input.split('<tr')
+    .map(it => '<tr' + it.replace(/[\t\n\r ]+/g, ' '))
+    .map(parseResult)
+    .filter(it => it);
+}

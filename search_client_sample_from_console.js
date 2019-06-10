@@ -32,10 +32,14 @@ const Gio = imports.gi.Gio;
 const Extension = imports.misc.extensionUtils.getCurrentExtension();
 const Utils = Extension.imports.utils;
 
+const Soup = imports.gi.Soup;
+
 class ConsoleSearchClient {
   constructor() {
     this.limit = 10;
-    this.server = 'http://libgen.io';
+
+    this._base_url = 'http://libgen.io/';
+    this._search_url = this._base_url + 'search.php?req=';
 
     let home_dir = GLib.get_home_dir();
     this._extension_name = 'libgen-search-provider@gustavocms.gmail.com';
@@ -46,28 +50,16 @@ class ConsoleSearchClient {
   _log(text) {
     let file = Gio.file_new_for_path(this._extension_dir + '/log');
     let fos = file.append_to(Gio.FileCreateFlags.NONE, null);
-    fos.write(text, null);
+    fos.write(text + '\n', null);
     fos.close(null);
   }
 
-  _search(searchterm) {
-    let command = this._search_command + ' ' + this.server + ' "' + searchterm + '"';
-    let output = GLib.spawn_command_line_sync(command);
-
-    this._log(command + '\n');
-    this._log(searchterm + '\n');
-    this._log(output[1]);
-    this._log('\n');
-
-    var parsed = [];
-    try {
-      parsed = JSON.parse(output[1]);
-      this._log("OK\n", null);
-    } catch (e) {
-      this._log(e.toString(), null);
-    }
-
-    return parsed;
+  _buildQueryUrl(searchterm) {
+    let url = '%s%s'.format(
+      this._search_url,
+      encodeURIComponent(searchterm)
+    );
+    return url;
   }
 
   /**
@@ -85,26 +77,40 @@ class ConsoleSearchClient {
     terms.shift();
     let searchterm = terms.join(" ");
 
-    let json = this._search(searchterm);
+    let query_url = this._buildQueryUrl(searchterm);
+    this._log("QUERY URL: " + query_url);
 
-    callback(null, json ? this._parseResults(json) : json);
+    let request = Soup.Message.new('GET', query_url);
+    _get_soup_session().queue_message(request, (http_session, message) => {
+      this._log("Result: " + message.status_code);
+      if (message.status_code !== Soup.KnownStatusCode.OK) {
+        let error_message = "SampleSearchClient:get(): Error code: %s".format(message.status_code);
+        this._log("Error: " + message.status_code);
+        callback(error_message, null);
+      } else {
+        this._log("Response: " + message.response_body.data);
+        const rawResults = Utils.parseResultsHTML(message.response_body.data);
+
+        if (rawResults && rawResults.length > 0) {
+          this._log("NResults: " + rawResults.length);
+
+          callback(null, this._parseResults(rawResults));
+        } else {
+          let error = "Nothing found";
+          callback(error, null);
+        }
+      }
+    });
   }
 
   _parseResults(rawResultsArray) {
-    let server = this.server;
+    let base_url = this._base_url;
     return rawResultsArray.map((item, index) => {
       return {
         id: item.id,
         name: item.title,
         description: this._parseDescription(item),
-        getUrl: function() {
-          let query = server + '/json.php?fields=MD5&ids=' + item.id;
-          let json = Utils.syncFetchJSON(server, query)
-          let md5 = json ? json[0].md5 : null;
-          let url = md5 ? server + '/item/index.php?md5=' + md5 : null;
-
-          return url;
-        }
+        url: base_url + item.url
       };
     });
   }
@@ -117,9 +123,32 @@ class ConsoleSearchClient {
     return desc;
   }
 
-  destroy() {
 
+  destroy() {
+    this._log("Destroying");
+    _get_soup_session().run_dispose();
+    _SESSION = null;
   }
+}
+
+const USER_AGENT = 'GNOME Shell - WordReferenceSearchProvider - extension';
+const HTTP_TIMEOUT = 10;
+
+
+let _SESSION = null;
+
+function _get_soup_session() {
+  if (_SESSION === null) {
+    _SESSION = new Soup.SessionAsync();
+    Soup.Session.prototype.add_feature.call(
+      _SESSION,
+      new Soup.ProxyResolverDefault()
+    );
+    _SESSION.user_agent = USER_AGENT;
+    _SESSION.timeout = HTTP_TIMEOUT;
+  }
+
+  return _SESSION;
 }
 
 /**
