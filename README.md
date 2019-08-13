@@ -1,3 +1,4 @@
 # libgen-search-provider
 
-Requires installing libgenapi https://github.com/mmarquezs/libgen-python-api
+
+Copy folder contents in ~/.local/share/gnome-shell/extensions/libgen-search-provider@gustavocms.gmail.com/
